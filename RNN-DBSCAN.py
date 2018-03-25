@@ -83,10 +83,6 @@ class RnnDbcsan(object):
     # @vectorize(["float32(float32, float32)"], target='cuda')
     def neighbors(self,X,x,k):
         clu = np.array([x for x in self.r_neighbor(X,x,k) if len(self.r_neighbor(X,x,k)) > k])
-        # plt.scatter(X[:,[0]],X[:,[1]],c='k')
-        # plt.scatter(self.r_neighbor(X,x,k)[:,[0]],self.r_neighbor(X,x,k)[:,[1]],c=['b'])
-        # plt.scatter(x[0],x[1],c=['y'])        
-        # plt.show()
         neighbors = np.ndarray.tolist(self.neighbor(X,x,k)) + np.ndarray.tolist(clu)
         return np.array(neighbors)
     '''
@@ -189,7 +185,3 @@ class RnnDbcsan(object):
                 pass
             pass
         pass
-        # print(assign)
-        # print(X)
-        print(self.count_time)
-        self.draw_pic(assign)
