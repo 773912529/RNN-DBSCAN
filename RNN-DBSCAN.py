@@ -6,6 +6,7 @@ from sklearn import preprocessing
 from collections import deque
 from numba import jit
 import datetime
+import csv
 '''
 The value of cluster:
 99:'UNCLASSIFIED'
@@ -50,8 +51,9 @@ class RnnDbcsan(object):
         return new_data
     pass
     '''
-    创建距离索引，将任意两个观察点的距离放入数组中
+    创建距离索引，将任意两个观察点的索引和距离放入数组中
     '''
+    # @jit
     def distance_index_struct(self,data):
         distance_index = [[0.0]*3 for i in range(len(data)*len(data))]
         distance_index = np.array(distance_index)
@@ -67,26 +69,37 @@ class RnnDbcsan(object):
     创建邻居索引，将每个观察点的k近邻放入数组中
     '''
     # @jit
-    def neighbor_index(self,data,k,dist_index):
+    def neighbor_index(self,data,k):
         index = [[0.0]*(k+1) for i in range(len(data))]
         index = np.array(index)
+        index[:,0] = data[:,3]  
+        count = 0      
         for da in data:
-            que = [i for i in dist_index if i[0] == da[3]]
-            que = sorted(que,key=lambda x:x[2])
-            que = que[0:k+1]
-            que = np.array(que)
+            num = 0
+            neb = [[0.0]*3 for j in range(len(data))]
+            neb = np.array(neb)
+            for nebe in data:
+                dist = self.distance(da,nebe)
+                # #print(type(neb))
+                # #print(neb)
+                neb[num,0] = da[3]
+                neb[num,1] = nebe[3]
+                neb[num,2] = dist
+                num += 1 
+            neb = sorted(neb[1:],key=lambda x:x[2])
+            neb = np.array(neb)
             
-            for x in range(len(que)):
-                if(x == 0):
-                    index[int(que[x][0]),[0]] = que[x][1]
-                else:
-                    index[int(que[x][0]),[x]] = que[x][1]
+            for x in range(k):
+                index[count,x+1] = neb[x,1]
+            #print(index[count])
+            count += 1
+            
         return index
     pass
     '''
     创建逆邻居索引，将每个观察点的逆邻居放入数组中
     '''
-    # @jit
+    # @jit 
     def r_neighbor_index(self,data,k,neb_index):
         index = [[] for i in range(len(data))]
         count = 0
@@ -95,7 +108,9 @@ class RnnDbcsan(object):
             for z in data:
                 if(x[3] in self.find_neighbor(z[3],neb_index)):
                     index[count].append(z[3])
+            #print(index[count])
             count += 1
+            
         for q in index:
             q = np.array(q)
         return index
@@ -156,6 +171,7 @@ class RnnDbcsan(object):
         if(len(self.find_r_neighbor(x[3],r_neb_index)) <= k):
             x[2] = 98
             self.assignn(x[3],98,assign)
+            # self.draw_pic(assign,dataset)
             return False
         else:
             queue = deque(self.neighbors(x[3],neb_index,r_neb_index,k))
@@ -177,6 +193,7 @@ class RnnDbcsan(object):
                     pass
                 pass
             pass
+            # self.draw_pic(assign,dataset)
             return True
         pass
     
@@ -185,13 +202,13 @@ class RnnDbcsan(object):
     '''
     def draw_pic(self,assign,dataset):
         new_assgin = dataset
-        # 蓝色、蓝绿色、绿色、黑色、品红、红色、白色、黄色
-        color = ['b','c','g','k','m','r','w','y']
+        
+        color = ['#ff0000','#00a650' ,'#959595','#00aeef','#ed008c','#f7977a','#fff799','#c6df9c','#81ca9d','#6ccff7','#f49bc1','#ee105a','#00a650' ,'#959595','#a763a9','#00aeef','#7b3000','#00a650' ,'#959595','#00aeef','#ed008c','#f7977a','#fff799','#c6df9c','#81ca9d','#6ccff7','#f49bc1','#ee105a','#00a650' ,'#959595','#a763a9','#00aeef','#7b3000']
         new_assgin[:,2] = assign[:,1]
-        for x in range(10):
+        for x in range(len(color)):
             for j in new_assgin:
                 if(j[2] == 98.0):
-                    plt.scatter(j[0],j[1],c='y')
+                    plt.scatter(j[0],j[1],c='k')
                 elif(j[2] == x):
                     plt.scatter(j[0],j[1],c=color[x])
         plt.show()
@@ -207,12 +224,15 @@ class RnnDbcsan(object):
         '''
         初始化近邻索引表和逆向近邻索引表
         '''
-        dist_index = self.distance_index_struct(data)
-        neb_index = self.neighbor_index(data,k,dist_index)
+        neb_index = self.neighbor_index(data,k)
+        #print(neb_index)
+        end_neb = datetime.datetime.now()
+        #print(end_neb - start)
         r_neb_index = self.r_neighbor_index(data,k,neb_index)
+        #print(r_neb_index)
         end1 = datetime.datetime.now()
-        print(end1 - start)
-        # print(self.neighbors(data[2],neb_index,r_neb_index,k))
+        #print(end1 - start)
+        # #print(self.neighbors(data[2],neb_index,r_neb_index,k))
         for x in dataset:
             q = [j for j in assign if x[3] == j[0]]
             if(q[0][1] == 99):
@@ -222,5 +242,22 @@ class RnnDbcsan(object):
             pass
         pass
         end = datetime.datetime.now()
-        print(end - start)
+        #print(end - start)
         self.draw_pic(assign,dataset)
+
+
+
+file = 'dataset/r15.csv'
+rdb = RnnDbcsan()
+k = 10
+data = np.array(rdb.init_set(file))
+# #print(data)
+rdb.main_function(data,k)
+
+
+
+
+
+
+
+
